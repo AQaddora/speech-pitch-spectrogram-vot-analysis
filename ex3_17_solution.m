@@ -16,6 +16,7 @@ Fs = 10000;             % Sampling frequency (10 kHz)
 Nfft = 1024;            % FFT points 
 window_durations = [25, 10]; % Window durations in ms
 window_colors = {'b', 'r'};  % Colors for plotting
+windowed_signals = cell(length(window_durations), 1);  % To store windowed signals
 
 % Load the speech data
 matfile = 'data/ex3M1.mat';
@@ -40,9 +41,13 @@ grid on;
 saveas(gcf, 'figures/speech_waveform.png');
 saveas(gcf, 'figures/speech_waveform.fig');
 
-% Compute and plot FFT with different window durations
+% Apply window and compute FFT
 figure;
-hold on;
+subplot(5,1,1);
+plot(t, x);
+title('Original Signal');
+xlabel('Time (s)'); ylabel('Amplitude');
+grid on;
 
 for i = 1:length(window_durations)
     % Convert ms to samples and create Hamming window
@@ -54,8 +59,37 @@ for i = 1:length(window_durations)
     start_idx = center_idx - floor(win_len/2) + 1;
     end_idx = start_idx + win_len - 1;
     
-    % Apply window and compute FFT
+    % Create time vector for plotting window
+    t_win = (start_idx:end_idx)/Fs;
+    
+    % Plot Hamming window
+    subplot(5,1,i*2);
+    plot(t_win, w);
+    title(sprintf('%d ms Hamming Window', window_durations(i)));
+    xlabel('Time (s)'); ylabel('Amplitude');
+    grid on;
+    
+    % Apply window and plot windowed signal
     windowed_signal = x(start_idx:end_idx) .* w;
+    subplot(5,1,i*2+1);
+    plot(t_win, windowed_signal);
+    title(sprintf('%d ms Windowed Signal', window_durations(i)));
+    xlabel('Time (s)'); ylabel('Amplitude');
+    grid on;
+    
+    % Save the windowed signal for FFT
+    windowed_signals{i} = windowed_signal;
+end
+saveas(gcf, 'figures/windowed_signals.png');
+saveas(gcf, 'figures/windowed_signals.fig');
+
+% Compute and plot FFT with different window durations
+figure;
+hold on;
+
+for i = 1:length(window_durations)
+    % Compute FFT using previously windowed signal
+    windowed_signal = windowed_signals{i};
     X = fft(windowed_signal, Nfft);
     
     % Compute and plot log-magnitude spectrum

@@ -52,6 +52,8 @@ create_spectrogram(y, Fs, 5, 1, 'Spectrogram with 5 ms Window / 1 ms Frame (Wide
 create_spectrogram(y, Fs, 30, 1, 'Spectrogram with 30 ms Window / 1 ms Frame (Very Narrowband)', 'spectrogram_30ms_1ms');
 create_spectrogram(y, Fs, 3, 1, 'Spectrogram with 3 ms Window / 1 ms Frame (Very Wideband)', 'spectrogram_3ms_1ms');
 create_spectrogram(y, Fs, 20, 5, 'Spectrogram with 20 ms Window / 5 ms Frame', 'spectrogram_20ms_5ms');
+create_spectrogram(y, Fs, 3, 0.5, 'Spectrogram with 3 ms Window / 0.5 ms Frame Interval', 'spectrogram_3ms_0.5ms');
+create_spectrogram(y, Fs, 30, 5, 'Spectrogram with 30 ms Window / 5 ms Frame Interval', 'spectrogram_30ms_5ms');
 
 %% Part B: VOT Modification - Change voiced plosive "b" to approach "p"
 
@@ -77,70 +79,86 @@ sgtitle('Waveform and Spectrogram of "be" (5 ms Window)');
 saveas(gcf, 'figures/be_waveform_and_spectrogram.png');
 saveas(gcf, 'figures/be_waveform_and_spectrogram.fig');
 
-% Identify burst and voice onset (estimated)
-burst_idx = round(0.04 * Fs);        % Burst at ~40ms
-vot_increase = 0.03;                 % Add 30ms silence
+% Visualize the "be" segment for burst and voice onset identification
+figure;
+plot((0:length(be)-1)/Fs, be);
+title('Select burst and voice onset points in "be"');
+xlabel('Time (s)');
+[time_points, ~] = ginput(2);  % User selects two points
+burst_idx = round(time_points(1) * Fs);
+voice_onset_idx = round(time_points(2) * Fs);
+
+% Increase VOT by adding silence between burst and voice onset
+vot_increase = 0.03; % 30ms
 silence_samples = round(vot_increase * Fs);
+be_modified = [be(1:burst_idx); zeros(silence_samples,1); be(voice_onset_idx:end)];
 
-% For interactive selection (uncomment to use)
-% figure;
-% subplot(2,1,1); plot((0:length(be)-1)/Fs, be);
-% subplot(2,1,2); specgram_hw3p20(be, win_samples_be, frame_samples_be, Fs);
-% [time_points, ~] = ginput(2);  % Click burst and voice onset
-% burst_idx = round(time_points(1) * Fs);
-% voice_onset_idx = round(time_points(2) * Fs);
-
-% Create modified "be" with increased VOT
-be_modified = [be(1:burst_idx); zeros(silence_samples, 1); be(burst_idx+1:end)];
+% Create enhanced version with pre-voicing removal
+be_enhanced = be_modified;
+pre_voicing_end = burst_idx - round(0.02 * Fs); % Estimate pre-voicing area (20ms before burst)
+if pre_voicing_end < 1
+    pre_voicing_end = 1;
+end
+be_enhanced(1:pre_voicing_end) = 0; % Remove pre-voicing
 
 % Save audio files
 audiowrite('data/be_original.wav', be, Fs);
 audiowrite('data/be_modified.wav', be_modified, Fs);
+audiowrite('data/be_enhanced.wav', be_enhanced, Fs);
 
 % Compare original and modified waveforms
 figure;
-subplot(2,1,1);
+subplot(3,1,1);
 plot((0:length(be)-1)/Fs, be);
-title('Original "be" Waveform');
+title('Original "be" Waveform (voiced /b/)');
 xlabel('Time (s)'); ylabel('Amplitude');
 grid on;
 
-subplot(2,1,2);
+subplot(3,1,2);
 plot((0:length(be_modified)-1)/Fs, be_modified);
-title('Modified "be" Waveform with Increased VOT');
+title('Modified "be" with Increased VOT (approaching /p/)');
 xlabel('Time (s)'); ylabel('Amplitude');
 grid on;
+
+subplot(3,1,3);
+plot((0:length(be_enhanced)-1)/Fs, be_enhanced);
+title('Enhanced "pe" with Pre-voicing Removal');
+xlabel('Time (s)'); ylabel('Amplitude');
+grid on;
+
 saveas(gcf, 'figures/be_comparison.png');
 saveas(gcf, 'figures/be_comparison.fig');
 
 % Compare spectrograms
 figure;
-subplot(2,1,1);
+subplot(3,1,1);
 specgram_hw3p20(be, win_samples_be, frame_samples_be, Fs);
-title('Original "be" Spectrogram');
+title('Original "be" Spectrogram (voiced /b/)');
 
-subplot(2,1,2);
+subplot(3,1,2);
 specgram_hw3p20(be_modified, win_samples_be, frame_samples_be, Fs);
 title('Modified "be" Spectrogram with Increased VOT');
+
+subplot(3,1,3);
+specgram_hw3p20(be_enhanced, win_samples_be, frame_samples_be, Fs);
+title('Enhanced "pe" Spectrogram with Pre-voicing Removal');
+
 saveas(gcf, 'figures/be_spectrogram_comparison.png');
 saveas(gcf, 'figures/be_spectrogram_comparison.fig');
 
 %% Part C: Phoneme Swapping - Interchange "b" and "w"
 
-% Estimate phoneme boundaries
-w_end_idx = round(0.2 * Fs);  % End of /w/ in "we"
-b_end_idx = round(0.1 * Fs);  % End of /b/ in "be"
+% Identify phoneme boundary for /w/ in "we"
+figure; plot((0:length(we)-1)/Fs, we); title('Select end of /w/ in "we"');
+[w_end_time, ~] = ginput(1);
+w_end_idx = round(w_end_time * Fs);
 
-% For interactive selection (uncomment to use)
-% figure; plot((0:length(we)-1)/Fs, we); title('Select end of /w/');
-% [w_end_time, ~] = ginput(1);
-% w_end_idx = round(w_end_time * Fs);
-% 
-% figure; plot((0:length(be)-1)/Fs, be); title('Select end of /b/');
-% [b_end_time, ~] = ginput(1);
-% b_end_idx = round(b_end_time * Fs);
+% Identify phoneme boundary for /b/ in "be"
+figure; plot((0:length(be)-1)/Fs, be); title('Select end of /b/ in "be"');
+[b_end_time, ~] = ginput(1);
+b_end_idx = round(b_end_time * Fs);
 
-% Create swapped words
+% Swap phonemes using precise boundaries
 we_to_be = [be(1:b_end_idx); we(w_end_idx+1:end)];
 be_to_we = [we(1:w_end_idx); be(b_end_idx+1:end)];
 
